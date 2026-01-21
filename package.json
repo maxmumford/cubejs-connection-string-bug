@@ -3,11 +3,7 @@
   "version": "1.0.0",
   "description": "Reproduction for Cube.js AggregateError with DATABASE_URL + repositoryFactory",
   "scripts": {
-    "setup": "kind create cluster --name cube-test --config kind-config.yaml && npm run deploy",
-    "deploy": "kubectl apply -f postgres.yaml -f schema-server.yaml && kubectl wait --for=condition=Ready pod/postgres pod/schema-server --timeout=60s",
-    "test:database-url": "kubectl apply -f repro-database-url.yaml && kubectl wait --for=condition=Ready pod/cube-database-url --timeout=120s && kubectl port-forward svc/cube-database-url 4000:4000 & sleep 3 && curl -s 'http://localhost:4000/cubejs-api/v1/load?query={\"measures\":[\"Items.count\"]}' -H 'Authorization: test-secret' && pkill -f 'port-forward.*4000'",
-    "test:explicit-params": "kubectl apply -f repro-explicit-params.yaml && kubectl wait --for=condition=Ready pod/cube-explicit-params --timeout=120s && kubectl port-forward svc/cube-explicit-params 4001:4000 & sleep 3 && curl -s 'http://localhost:4001/cubejs-api/v1/load?query={\"measures\":[\"Items.count\"]}' -H 'Authorization: test-secret' && pkill -f 'port-forward.*4001'",
-    "test": "echo '=== Testing DATABASE_URL (should FAIL) ===' && npm run test:database-url; echo '\\n=== Testing explicit params (should WORK) ===' && npm run test:explicit-params",
+    "test": "./test.sh",
     "cleanup": "kind delete cluster --name cube-test"
   }
 }

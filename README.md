@@ -8,12 +8,17 @@ Reproduction for a bug where `CUBEJS_DATABASE_URL` + `repositoryFactory` causes 
 - **Issue**: `repositoryFactory` + `CUBEJS_DATABASE_URL` = AggregateError on `/load`
 - **Workaround**: Use explicit DB params or `driverFactory`
 
+## Prerequisites
+
+- [kind](https://kind.sigs.k8s.io/) (Kubernetes in Docker)
+- kubectl
+- curl
+
 ## Quick Start
 
 ```bash
-npm run setup    # Create kind cluster and deploy postgres/schema-server
-npm test         # Run both tests and compare results
-npm run cleanup  # Delete kind cluster
+npm test         # Creates cluster, deploys, and runs both tests
+npm run cleanup  # Delete kind cluster when done
 ```
 
 ## Expected Results
@@ -23,30 +28,7 @@ npm run cleanup  # Delete kind cluster
 {"error":"Error: AggregateError"}
 
 === Testing explicit params (should WORK) ===
-{"data":[{"Items.count":"3"}]}
-```
-
-## Manual Steps
-
-```bash
-# 1. Create kind cluster
-kind create cluster --name cube-test --config kind-config.yaml
-
-# 2. Deploy stack
-kubectl apply -f postgres.yaml -f schema-server.yaml
-kubectl wait --for=condition=Ready pod/postgres pod/schema-server --timeout=60s
-
-# 3. Test with DATABASE_URL (FAILS)
-kubectl apply -f repro-database-url.yaml
-kubectl wait --for=condition=Ready pod/cube-database-url --timeout=120s
-kubectl port-forward svc/cube-database-url 4000:4000 &
-curl -s "http://localhost:4000/cubejs-api/v1/load?query=%7B%22measures%22%3A%5B%22Items.count%22%5D%7D" -H "Authorization: test-secret"
-
-# 4. Test with explicit params (WORKS)
-kubectl apply -f repro-explicit-params.yaml
-kubectl wait --for=condition=Ready pod/cube-explicit-params --timeout=120s
-kubectl port-forward svc/cube-explicit-params 4001:4000 &
-curl -s "http://localhost:4001/cubejs-api/v1/load?query=%7B%22measures%22%3A%5B%22Items.count%22%5D%7D" -H "Authorization: test-secret"
+{"query":...,"data":[{"Items.count":"3"}]}
 ```
 
 ## Workaround
