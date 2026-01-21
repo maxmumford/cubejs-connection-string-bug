@@ -1,0 +1,88 @@
+# Cube.js with explicit DB params + repositoryFactory - WORKS
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cube-config-explicit-params
+data:
+  cube.js: |
+    const SCHEMA_URL = process.env.SCHEMA_URL || 'http://schema-server:8080/schema';
+
+    async function fetchSchemas(url) {
+      for (let i = 0; i < 30; i++) {
+        try {
+          const res = await fetch(url);
+          if (res.ok) return res.json();
+        } catch (e) {
+          console.log(`Waiting for schema server... attempt ${i + 1}/30`);
+        }
+        await new Promise(r => setTimeout(r, 2000));
+      }
+      throw new Error('Schema server unavailable');
+    }
+
+    module.exports = {
+      repositoryFactory: () => ({
+        dataSchemaFiles: async () => {
+          console.log(`Fetching schemas from ${SCHEMA_URL}...`);
+          const schemas = await fetchSchemas(SCHEMA_URL);
+          console.log(`Loaded ${schemas.length} schemas`);
+          return schemas;
+        }
+      }),
+      checkAuth: () => true,
+    };
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cube-explicit-params
+  labels:
+    app: cube-explicit-params
+spec:
+  containers:
+  - name: cube
+    image: cubejs/cube:v1.6.4
+    ports:
+    - containerPort: 4000
+    env:
+    - name: CUBEJS_DB_TYPE
+      value: postgres
+    # Using explicit params - this WORKS with repositoryFactory
+    - name: CUBEJS_DB_HOST
+      value: "postgres"
+    - name: CUBEJS_DB_PORT
+      value: "5432"
+    - name: CUBEJS_DB_NAME
+      value: "testdb"
+    - name: CUBEJS_DB_USER
+      value: "postgres"
+    - name: CUBEJS_DB_PASS
+      value: "testpass"
+    - name: CUBEJS_DEV_MODE
+      value: "false"
+    - name: CUBEJS_CACHE_AND_QUEUE_DRIVER
+      value: memory
+    - name: CUBEJS_API_SECRET
+      value: test-secret
+    - name: CUBEJS_LOG_LEVEL
+      value: trace
+    - name: SCHEMA_URL
+      value: "http://schema-server:8080/schema"
+    volumeMounts:
+    - name: config
+      mountPath: /cube/conf/cube.js
+      subPath: cube.js
+  volumes:
+  - name: config
+    configMap:
+      name: cube-config-explicit-params
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cube-explicit-params
+spec:
+  selector:
+    app: cube-explicit-params
+  ports:
+  - port: 4000
